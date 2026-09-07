@@ -1,0 +1,433 @@
+<!doctype html><html lang="id"><head>
+<script src="./cbt-config.js"></script>
+<script>
+(function(){
+  const C=window.CBT_CONFIG||{};
+  window.CBT_API_URL=C.API_URL||'';
+  window.cbtApiCall=async function(name,args){
+    if(!window.CBT_API_URL || /PASTE_GAS_WEB_APP_URL_HERE/i.test(window.CBT_API_URL))
+      throw new Error('API_URL belum diisi pada cbt-config.js.');
+    const token=localStorage.getItem('cbtAdminToken')||localStorage.getItem('cbtRoleToken')||localStorage.getItem('cbtUserToken')||'';
+    const res=await fetch(window.CBT_API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:name,args:Array.isArray(args)?args:[],token:token}),
+      redirect:'follow',
+      cache:'no-store'
+    });
+    const text=await res.text();
+    let out;
+    try{out=JSON.parse(text)}catch(e){throw new Error('Respons API tidak valid: '+text.slice(0,300))}
+    if(!out.success) throw new Error(out.error||'Terjadi kesalahan server.');
+    return out.data;
+  };
+})();
+</script><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CBT Sekolah</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#172033}.hidden{display:none!important}
+#loading{position:fixed;inset:0;background:#0008;z-index:99;display:none;align-items:center;justify-content:center;color:#fff;font-size:18px}.box{background:#fff;color:#172033;padding:24px;border-radius:14px}
+.login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#0f172a,#2563eb)}.card{background:#fff;padding:30px;border-radius:18px;width:min(420px,92%);box-shadow:0 15px 50px #0005}
+input,select,textarea,button{font:inherit;padding:10px;border:1px solid #cbd5e1;border-radius:8px;width:100%}button{background:#2563eb;color:white;border:0;cursor:pointer;font-weight:bold}.danger{background:#dc2626}.secondary{background:#64748b}.success{background:#16a34a}
+.app{display:flex;min-height:100vh}.side{width:250px;background:#0f172a;color:white;padding:18px;position:sticky;top:0;height:100vh;overflow:auto}.side button{margin:4px 0;text-align:left;background:#1e293b}.main{flex:1;padding:22px;overflow:auto}.top{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}.stat,.panel{background:white;padding:18px;border-radius:12px;box-shadow:0 2px 12px #0001}.stat b{font-size:30px;color:#2563eb}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar button{width:auto}.tablewrap{overflow:auto;background:#fff;border-radius:12px}.table{width:100%;border-collapse:collapse;min-width:700px}.table th,.table td{padding:9px;border-bottom:1px solid #e2e8f0;text-align:left}.table th{background:#eff6ff}.small{width:auto;padding:6px 9px;margin:2px}.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.full{grid-column:1/-1}.notice{padding:10px;border-radius:8px;margin:8px 0;background:#e0f2fe}
+.examHead{display:flex;justify-content:space-between;background:#fff;padding:14px;position:sticky;top:0}.question{background:#fff;padding:20px;border-radius:12px}.option{padding:12px;border:1px solid #cbd5e1;border-radius:8px;margin:8px 0;cursor:pointer}.option.selected{background:#dbeafe;border-color:#2563eb}.nums button{width:42px;margin:3px}.nums .answered{background:#16a34a}.nums .active{outline:3px solid #f59e0b}
+@media(max-width:760px){.app{display:block}.side{width:100%;height:auto;position:static}.main{padding:12px}.side button{display:inline-block;width:auto}.card{padding:20px}}
+
+.cardtools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.kartu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(390px,1fr));gap:18px}
+.kartu-ujian{background:#fff;border:1px solid #222;max-width:720px;margin:auto;font-family:Arial,sans-serif;color:#20242a}
+.kartu-top{display:grid;grid-template-columns:210px 1fr}
+.kartu-logo{min-height:220px;display:flex;align-items:center;justify-content:center;border-right:1px solid #222;padding:10px}
+.kartu-logo img{max-width:175px;max-height:190px;object-fit:contain}
+.kartu-head{text-align:center}.yayasan{font-weight:700;font-size:18px;padding-top:8px}.sekolah{font-size:29px;font-weight:900;letter-spacing:1px;margin-top:4px}.alamat{font-size:14px;margin:5px 12px}
+.kartu-title{background:#07090c;color:#fff;font-weight:900;font-size:23px;line-height:1.45;padding:7px 8px;margin-top:5px;letter-spacing:.5px}.tahun{font-size:21px;font-weight:900;padding:5px}
+.kartu-row{display:grid;grid-template-columns:210px 1fr;border-top:1px solid #555;min-height:32px;font-size:19px}.kartu-label{padding:4px 10px;border-right:1px solid #555}.kartu-value{padding:4px 10px;font-weight:700}
+.kartu-split{display:grid;grid-template-columns:210px 1fr 128px 1fr;border-top:1px solid #555;font-size:19px}.kartu-split>div{padding:4px 10px;border-right:1px solid #555}.kartu-split>div:last-child{border-right:0}
+.kartu-cred{display:grid;grid-template-columns:210px 1fr;border-top:1px solid #555}.cred-label{background:#d7d7d7;text-align:center;padding:4px;font-size:18px;font-weight:900;border-right:1px solid #555}.cred-value{padding:14px 10px;font-size:25px;font-weight:900;letter-spacing:1px}
+.kartu-foot{min-height:145px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:18px;text-align:center;border-top:1px solid #555}.ttd-space{height:40px}.ttd-name{font-weight:900;font-size:18px}
+@media print{body{background:#fff}.no-print,.side,.top{display:none!important}.kartu-grid{display:block}.kartu-ujian{break-inside:avoid;page-break-inside:avoid;margin:0 auto 16px}.main{padding:0}.app{display:block}.printOnly{display:block}}
+
+.autosave-note{font-size:12px;color:#64748b;margin-top:8px}</style><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script><script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+<div id="loading"><div class="box" id="loadingText">Memproses...</div></div>
+<section id="loginPage" class="login"><div class="card"><h1>CBT SEKOLAH</h1><p>Masuk sebagai Siswa, Guru, Pengawas, atau Administrator</p><form id="loginForm"><input id="username" placeholder="Username / NIS" required><br><br><input id="password" type="password" placeholder="Password" required><br><br><button>MASUK</button></form><div id="msg"></div></div></section>
+
+<section id="adminPage" class="hidden app"><aside class="side"><h2>CBT ADMIN</h2><div id="adminName"></div><hr>
+<button onclick="adminMenu('dashboard')">📊 Dashboard</button><button onclick="adminMenu('siswa')">👨‍🎓 Siswa</button><button onclick="adminMenu('kartu')">🪪 Kartu Ujian</button><button onclick="adminMenu('kelas')">🏫 Kelas</button><button onclick="adminMenu('mapel')">📚 Mata Pelajaran</button><button onclick="adminMenu('ujian')">📝 Ujian</button><button onclick="adminMenu('soal')">❓ Bank Soal</button><button onclick="adminMenu('upload')">📤 Upload Soal</button><button onclick="adminMenu('jawaban')">📋 Jawaban</button><button onclick="adminMenu('hasil')">📈 Hasil Ujian</button><button onclick="adminMenu('essay')">✍️ Koreksi Essay</button><button onclick="adminMenu('pengaturanHasil')">⚙️ Tampilan Hasil</button><button onclick="adminMenu('pengguna')">👥 Guru / Pengawas</button><button class="danger" onclick="logout()">Keluar</button></aside><main class="main"><div id="adminContent"></div></main></section>
+
+<section id="studentPage" class="hidden"><div class="top" style="padding:14px;background:#fff"><b>CBT SEKOLAH</b><span id="studentInfo"></span><button class="small secondary" onclick="logout()">Keluar</button></div><main class="main"><h2>Ujian Tersedia</h2><div id="examList" class="grid"></div></main></section>
+<section id="examPage" class="hidden"><div class="examHead"><div><b id="examName"></b><div id="examStudent"></div></div><b id="timer">00:00:00</b></div><main class="main"><div class="question"><div id="qnum"></div><h3 id="qtext"></h3><div id="answerArea"></div><div class="autosave-note">Jawaban tersimpan otomatis di perangkat dan dicadangkan ke server secara berkala.</div><div class="toolbar"><button onclick="prevQ()">← Sebelumnya</button><button onclick="nextQ()">Berikutnya →</button><button class="danger" onclick="finishExam()">Selesai Ujian</button></div></div><div class="panel nums" id="nums" style="margin-top:12px"></div></main></section>
+<section id="resultPage" class="hidden"><main class="main"><div class="card" style="margin:auto"><h2>Ujian Selesai</h2><h1 id="score"></h1><p id="resultMsg"></p><button onclick="showStudent()">Kembali</button></div></main></section>
+
+<script>
+let user=null, admin=null, currentExam=null, questions=[], answers={}, qi=0, examStarted=false, timerInt=null, seconds=0;
+let autosaveInt=null, autosaveDirty=false, autosaveBusy=false, examSessionId=null, examListInt=null;
+const AUTOSAVE_MS=45000;
+function examStorageKey(){return currentExam&&user?'cbtDraft_'+currentExam.ID_Ujian+'_'+user.id:''}
+function newSessionId(){return Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10)}
+function saveLocalDraft(){
+  const k=examStorageKey(); if(!k)return;
+  localStorage.setItem(k,JSON.stringify({answers,qi,seconds,sessionId:examSessionId,savedAt:Date.now()}));
+}
+function loadLocalDraft(){
+  const k=examStorageKey(); if(!k)return null;
+  try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}
+}
+function clearLocalDraft(){const k=examStorageKey();if(k)localStorage.removeItem(k)}
+function startAutosave(){
+  clearInterval(autosaveInt);
+  autosaveInt=setInterval(()=>autosaveNow(false),AUTOSAVE_MS);
+}
+function stopAutosave(){clearInterval(autosaveInt);autosaveInt=null}
+function autosaveNow(force){
+  if(!currentExam||!user||autosaveBusy||(!autosaveDirty&&!force))return;
+  autosaveBusy=true; saveLocalDraft();
+  call('simpanDraftJawaban',{idUjian:currentExam.ID_Ujian,idSiswa:user.id,sessionId:examSessionId,answers:answers})
+    .then(()=>{autosaveBusy=false;autosaveDirty=false;})
+    .catch(()=>{autosaveBusy=false;autosaveDirty=true;});
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autosaveNow(true)});
+window.addEventListener('beforeunload',()=>saveLocalDraft());
+const $=id=>document.getElementById(id); const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+function load(t){$('loadingText').textContent=t||'Memproses...';$('loading').style.display='flex'}function unload(){$('loading').style.display='none'}
+function page(id){['loginPage','adminPage','studentPage','examPage','resultPage'].forEach(x=>$(x).classList.add('hidden'));$(id).classList.remove('hidden')}
+$('loginForm').onsubmit=async e=>{
+  e.preventDefault();load('Memeriksa login...');
+  try{
+    const r=await call('login',$('username').value.trim(),$('password').value);
+    unload();
+    if(!r.success){$('msg').textContent=r.message;return}
+    if(r.role==='ADMIN'){
+      admin=r.user;localStorage.setItem('cbtAdmin',JSON.stringify(admin));localStorage.setItem('cbtAdminToken',r.token||'');showAdmin();
+    }else if(r.role==='PENGAWAS'){
+      localStorage.setItem('cbtRoleToken',r.token||'');localStorage.setItem('cbtRoleUser',JSON.stringify(r.user));
+      window.location.href=(window.CBT_CONFIG.PENGAWAS_URL||'./pengawas.html')+'?token='+encodeURIComponent(r.token||'');
+    }else if(r.role==='GURU'){
+      localStorage.setItem('cbtRoleToken',r.token||'');localStorage.setItem('cbtRoleUser',JSON.stringify(r.user));
+      window.location.href=(window.CBT_CONFIG.GURU_URL||'./guru.html')+'?token='+encodeURIComponent(r.token||'');
+    }else{
+      user=r.user;localStorage.setItem('cbtUser',JSON.stringify(user));localStorage.setItem('cbtUserToken',r.token||'');showStudent();
+    }
+  }catch(e){unload();$('msg').textContent='Gagal terhubung ke server: '+(e&&e.message?e.message:e)}
+}
+function showAdmin(){page('adminPage');$('adminName').textContent=admin.nama+' ('+admin.level+')';adminMenu('dashboard')}
+function showStudent(){page('studentPage');$('studentInfo').textContent=user.nama+' • '+user.kelas;loadExams()}
+function logout(){
+  clearInterval(timerInt);
+  stopAutosave();
+  clearInterval(examListInt);
+
+  // Hapus semua sesi lokal
+  localStorage.removeItem('cbtAdmin');
+  localStorage.removeItem('cbtAdminToken');
+  localStorage.removeItem('cbtUser');
+  localStorage.removeItem('cbtUserToken');
+  localStorage.removeItem('cbtRoleToken');
+  localStorage.removeItem('cbtRoleUser');
+
+  admin=null;
+  user=null;
+  examStarted=false;
+
+  // Tampilkan halaman login utama
+  page('loginPage');
+}
+
+const cfg={
+ siswa:{title:'Data Siswa',get:'adminGetSiswa',save:'adminSaveSiswa',del:'adminDeleteSiswa',id:'ID_Siswa',cols:['ID_Siswa','NIS','Nama','Kelas','Username','Password','Status']},
+ kelas:{title:'Data Kelas',get:'adminGetKelas',save:'adminSaveKelas',del:'adminDeleteKelas',id:'ID_Kelas',cols:['ID_Kelas','Nama_Kelas','Tingkat','Jurusan','Status']},
+ mapel:{title:'Mata Pelajaran',get:'adminGetMapel',save:'adminSaveMapel',del:'adminDeleteMapel',id:'ID_Mapel',cols:['ID_Mapel','Nama_Mapel','Kode_Mapel','Status']},
+ ujian:{title:'Data Ujian',get:'adminGetUjian',save:'adminSaveUjian',del:'adminDeleteUjian',id:'ID_Ujian',cols:['ID_Ujian','Nama_Ujian','Mapel','Kelas','Durasi','Tanggal_Mulai','Tanggal_Selesai','Status']},
+ pengguna:{title:'Guru / Pengawas'},
+ soal:{title:'Bank Soal',get:'adminGetSoal',save:'adminSaveSoal',del:'adminDeleteSoal',id:'ID_Soal',cols:['ID_Soal','ID_Ujian','Jenis','Soal','Gambar_Soal','A','Gambar_A','B','Gambar_B','C','Gambar_C','D','Gambar_D','E','Gambar_E','Kunci_Jawaban','Kata_Kunci','Bobot']}
+};
+function adminMenu(m){if(m==='dashboard')return dashboard();if(m==='pengguna')return penggunaPage();if(m==='upload')return uploadPage();if(m==='kartu')return kartuPage();if(m==='pengaturanHasil')return pengaturanHasilPage();if(m==='jawaban'||m==='hasil'||m==='essay')return readOnly(m);crudPage(m)}
+function call(name,...args){return cbtApiCall(name,args)}
+async function dashboard(){load('Memuat dashboard...');try{let d=await call('adminDashboard');$('adminContent').innerHTML='<h1>Dashboard Administrator</h1><div class="grid">'+[['Siswa',d.totalSiswa],['Kelas',d.totalKelas],['Mapel',d.totalMapel],['Ujian',d.totalUjian],['Ujian Aktif',d.ujianAktif],['Bank Soal',d.totalSoal],['Peserta',d.totalPeserta]].map(x=>`<div class="stat">${x[0]}<br><b>${x[1]}</b></div>`).join('')+'</div>'}catch(e){alert(e.message)}finally{unload()}}
+async function crudPage(type){let c=cfg[type];load('Memuat data...');try{let rows=await call(c.get);$('adminContent').innerHTML=`<h1>${c.title}</h1><div class="toolbar"><button onclick="editRow('${type}',null)">+ Tambah Data</button>${type==='siswa'?'<button class="success" onclick="generateLoginPage()">🔐 Generate Username & Password</button><button onclick="adminMenu(\'kartu\')">🪪 Cetak Kartu Ujian</button>':''}<button class="secondary" onclick="adminMenu('${type}')">↻ Refresh</button></div><div class="tablewrap"><table class="table"><thead><tr>${c.cols.map(x=>`<th>${x}</th>`).join('')}<th>Aksi</th></tr></thead><tbody>${rows.map(r=>`<tr>${c.cols.map(x=>`<td>${esc(r[x])}</td>`).join('')}<td><button class="small" onclick='editRow(${JSON.stringify(type)},${JSON.stringify(r)})'>Edit</button><button class="small danger" onclick="delRow('${type}','${r[c.id]}')">Hapus</button></td></tr>`).join('')}</tbody></table></div>`}catch(e){alert(e.message)}finally{unload()}}
+function insertAtCursor(id,text){const el=$(id);if(!el)return;const start=el.selectionStart??el.value.length,end=el.selectionEnd??el.value.length;el.value=el.value.slice(0,start)+text+el.value.slice(end);el.focus();el.selectionStart=el.selectionEnd=start+text.length}
+function imageButton(id){return `<button type=\"button\" class=\"secondary small\" onclick=\"insertAtCursor('${id}','[gambar: URL_GAMBAR]')\">🖼 Insert Gambar</button>`}
+function mathButton(id){return `<button type=\"button\" class=\"secondary small\" onclick=\"insertAtCursor('${id}',' $x^2$ ')\">∑ Insert Simbol/Rumus</button>`}
+function soalField(k,value){let id='f_'+k;let isText=['Soal','A','B','C','D','E'].includes(k);if(!isText)return `<label>${k}<input id=\"${id}\" value=\"${esc(value||'')}\"></label>`;return `<label>${k}<textarea id=\"${id}\" rows=\"4\">${esc(value||'')}</textarea><div class=\"toolbar\">${imageButton(id)}${mathButton(id)}</div></label>`}
+function editRow(type,row){let c=cfg[type];$('adminContent').innerHTML=`<h1>${row?'Edit':'Tambah'} ${c.title}</h1><div class=\"panel\"><div class=\"formgrid\">${c.cols.map(k=>k===c.id?`<input id=\"f_${k}\" type=\"hidden\" value=\"${esc(row?.[k]||'')}\">`:type==='soal'?soalField(k,row?.[k]||''):`<label>${k}<input id=\"f_${k}\" value=\"${esc(row?.[k]||'')}\"></label>`).join('')}</div><div class=\"notice\">Untuk gambar, tempel URL gambar atau link Google Drive. Untuk rumus, gunakan LaTeX, misalnya $x^2$, $\\frac{a}{b}$, atau \\[x^2+y^2\\].</div><div class=\"toolbar\"><button onclick=\"saveRow('${type}')\">Simpan</button><button class=\"secondary\" onclick=\"adminMenu('${type}')\">Batal</button></div></div>`}
+async function saveRow(type){let c=cfg[type],d={};c.cols.forEach(k=>{let e=$('f_'+k);if(e)d[k]=e.value});load('Menyimpan...');try{await call(c.save,d);alert('Berhasil disimpan');adminMenu(type)}catch(e){alert(e.message)}finally{unload()}}
+async function delRow(type,id){if(!confirm('Hapus data ini?'))return;let c=cfg[type];load('Menghapus...');try{await call(c.del,id);adminMenu(type)}catch(e){alert(e.message)}finally{unload()}}
+
+async function penggunaPage(){
+  load('Memuat data guru dan pengawas...');
+  try{
+    const d=await call('roleGetUsers',localStorage.getItem('cbtAdminToken')||'');
+    const uj=await call('adminGetUjian');
+    const opts=uj.map(x=>`<option value="${esc(x.ID_Ujian)}">${esc(x.Nama_Ujian)} — ${esc(x.Mapel)} — ${esc(x.Kelas)}</option>`).join('');
+    window.roleExamRows=uj;
+    window.roleListIds=x=>String(x||'').split(/[,;]+/).map(s=>s.trim()).filter(Boolean);
+    window.roleIdSelect=(id,selected)=>`<select id="${id}" multiple size="6" style="min-height:140px">${window.roleExamRows.map(x=>`<option value="${esc(x.ID_Ujian)}" ${window.roleListIds(selected).includes(String(x.ID_Ujian))?'selected':''}>${esc(x.Nama_Ujian)} — ${esc(x.Mapel)} — ${esc(x.Kelas)}</option>`).join('')}</select>`;
+    window.roleData=d;
+    $('adminContent').innerHTML=`<h1>👥 Guru & Pengawas</h1>
+      <div class="notice">Username dan password Guru/Pengawas disimpan pada sheet masing-masing. Penugasan ujian dipilih dari daftar, sehingga guru/pengawas hanya dapat mengakses ujian yang ditugaskan.</div>
+      <div class="toolbar"><button onclick="roleForm('guru')">＋ Tambah Guru</button><button onclick="roleForm('pengawas')">＋ Tambah Pengawas</button><button class="secondary" onclick="adminMenu('pengguna')">↻ Refresh</button></div>
+      <h2>Guru</h2><div class="tablewrap"><table class="table"><tr><th>Nama</th><th>Username</th><th>Status</th><th>Mapel</th><th>Kelas</th><th>Ujian</th><th>Aksi</th></tr>${d.guru.map((r,i)=>`<tr><td>${esc(r.Nama)}</td><td>${esc(r.Username)}</td><td>${esc(r.Status)}</td><td>${esc(r.Mapel)}</td><td>${esc(r.Kelas)}</td><td>${esc(r.ID_Ujian)}</td><td><button class="small" onclick="roleForm('guru',${i})">Edit</button> <button class="small danger" onclick="roleDel('guru','${esc(r.ID_Guru)}')">Hapus</button></td></tr>`).join('')}</table></div>
+      <h2>Pengawas</h2><div class="tablewrap"><table class="table"><tr><th>Nama</th><th>Username</th><th>Status</th><th>Ujian</th><th>Sesi</th><th>Ruang</th><th>Aksi</th></tr>${d.pengawas.map((r,i)=>`<tr><td>${esc(r.Nama)}</td><td>${esc(r.Username)}</td><td>${esc(r.Status)}</td><td>${esc(r.ID_Ujian)}</td><td>${esc(r.Sesi)}</td><td>${esc(r.Ruang)}</td><td><button class="small" onclick="roleForm('pengawas',${i})">Edit</button> <button class="small danger" onclick="roleDel('pengawas','${esc(r.ID_Pengawas)}')">Hapus</button></td></tr>`).join('')}</table></div>`;
+  }catch(e){alert(e.message)}finally{unload()}
+}
+function roleForm(type,i){
+  const arr=type==='guru'?window.roleData.guru:window.roleData.pengawas, r=i===undefined?{}:arr[i];
+  const isG=type==='guru';
+  $('adminContent').innerHTML=`<h1>${r[isG?'ID_Guru':'ID_Pengawas']?'Edit':'Tambah'} ${isG?'Guru':'Pengawas'}</h1><div class="panel"><div class="formgrid">
+  <input id="rf_id" type="hidden" value="${esc(r[isG?'ID_Guru':'ID_Pengawas']||'')}">
+  <label>Nama<input id="rf_nama" value="${esc(r.Nama||'')}"></label>
+  <label>Username<input id="rf_user" value="${esc(r.Username||'')}"></label>
+  <label>Password<input id="rf_pass" value="${esc(r.Password||'')}"></label>
+  <label>Status<select id="rf_status"><option ${upper(r.Status||'AKTIF')==='AKTIF'?'selected':''}>AKTIF</option><option ${upper(r.Status)==='NONAKTIF'?'selected':''}>NONAKTIF</option></select></label>
+  ${isG?`<label>Mata Pelajaran<input id="rf_mapel" value="${esc(r.Mapel||'')}"></label><label>Kelas<input id="rf_kelas" value="${esc(r.Kelas||'')}"></label>`:`<label>Sesi<input id="rf_sesi" value="${esc(r.Sesi||'')}"></label><label>Ruang<input id="rf_ruang" value="${esc(r.Ruang||'')}"></label>`}
+  <label class="full">Penugasan Ujian ${window.roleIdSelect('rf_ujian',r.ID_Ujian||'')}</label></div><div class="toolbar"><button onclick="roleSave('${type}')">Simpan</button><button class="secondary" onclick="adminMenu('pengguna')">Batal</button></div></div>`;
+}
+function upper(v){return String(v||'').toUpperCase()}
+async function roleSave(type){load('Menyimpan akun...');try{const ids=[...$('rf_ujian').selectedOptions].map(x=>x.value).join(',');const d={Nama:$('rf_nama').value,Username:$('rf_user').value,Password:$('rf_pass').value,Status:$('rf_status').value,ID_Ujian:ids};if(type==='guru'){d.ID_Guru=$('rf_id').value;d.Mapel=$('rf_mapel').value;d.Kelas=$('rf_kelas').value;await call('roleSaveGuru',localStorage.getItem('cbtAdminToken')||'',d)}else{d.ID_Pengawas=$('rf_id').value;d.Sesi=$('rf_sesi').value;d.Ruang=$('rf_ruang').value;await call('roleSavePengawas',localStorage.getItem('cbtAdminToken')||'',d)}alert('Akun berhasil disimpan.');adminMenu('pengguna')}catch(e){alert(e.message)}finally{unload()}}
+async function roleDel(type,id){if(!confirm('Hapus akun ini?'))return;load('Menghapus akun...');try{await call(type==='guru'?'roleDeleteGuru':'roleDeletePengawas',localStorage.getItem('cbtAdminToken')||'',id);adminMenu('pengguna')}catch(e){alert(e.message)}finally{unload()}}
+
+async function generateLoginPage(){
+  load('Memuat data kelas...');
+  try{
+    let ks=await call('getKelasUntukKartu');
+    $('adminContent').innerHTML=`<h1>Generate Login Siswa</h1>
+      <div class="panel">
+      <p>Username akan menggunakan NIS siswa. Password dibuat acak 8 karakter.</p>
+      <div class="formgrid">
+        <label>Target<select id="genMode"><option value="SEMUA">Semua siswa aktif</option><option value="KELAS">Per kelas</option></select></label>
+        <label id="genKelasWrap">Kelas<select id="genKelas">${ks.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('')}</select></label>
+        <label class="full"><input type="checkbox" id="genOverwrite" style="width:auto"> Generate ulang data yang sudah memiliki username/password</label>
+      </div>
+      <div class="toolbar"><button class="success" onclick="runGenerateLogin()">🔐 Generate Sekarang</button><button class="secondary" onclick="adminMenu('siswa')">Kembali</button></div>
+      <div class="notice">Data yang sudah memiliki login tidak akan diubah kecuali pilihan generate ulang dicentang.</div></div>`;
+    $('genMode').onchange=()=>$('genKelasWrap').style.display=$('genMode').value==='KELAS'?'block':'none';
+    $('genMode').dispatchEvent(new Event('change'));
+  }catch(e){alert(e.message)}finally{unload()}
+}
+async function runGenerateLogin(){
+  if(!confirm('Generate username dan password siswa?'))return;
+  load('Membuat login siswa...');
+  try{
+    let r=await call('generateLoginSiswa',{mode:$('genMode').value,kelas:$('genKelas').value,overwrite:$('genOverwrite').checked});
+    alert(r.message);adminMenu('siswa');
+  }catch(e){alert(e.message)}finally{unload()}
+}
+function escapeAttr(s){return esc(s).replace(/`/g,'&#096;')}
+
+async function kartuPage(){
+  load('Memuat data kartu...');
+  try{
+    let [rows,ks]=await Promise.all([call('getKartuUjianData'),call('getKelasUntukKartu')]);
+    kartuRows=rows;
+    $('adminContent').innerHTML=`<h1>Kartu Ujian Siswa</h1>
+      <div class="panel no-print"><div class="cardtools">
+        <label style="min-width:220px">Filter Kelas<select id="kartuKelas"><option value="">Semua Kelas</option>${ks.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('')}</select></label>
+        <label style="min-width:260px">Cari Siswa<input id="kartuCari" placeholder="Nama atau NIS"></label>
+        <button onclick="renderKartu()">Tampilkan</button><button class="success" onclick="window.print()">🖨 Cetak Kartu</button>
+      </div><div class="notice">Cetak satu siswa dengan memfilter nama/NIS, atau cetak seluruh kartu hasil filter.</div></div>
+      <div id="kartuArea" class="kartu-grid"></div>`;
+    $('kartuKelas').onchange=renderKartu;$('kartuCari').oninput=renderKartu;renderKartu();
+  }catch(e){alert(e.message)}finally{unload()}
+}
+function renderKartu(){
+  let k=norm_($('kartuKelas')?.value).toUpperCase(), q=norm_($('kartuCari')?.value).toUpperCase();
+  let rows=kartuRows.filter(s=>(!k||norm_(s.kelas).toUpperCase()===k)&&(!q||norm_(s.nama).toUpperCase().includes(q)||norm_(s.nis).toUpperCase().includes(q)));
+  $('kartuArea').innerHTML=rows.length?rows.map(kartuHTML).join(''):'<div class="panel">Data siswa tidak ditemukan.</div>';
+}
+
+async function pengaturanHasilPage(){
+  load('Memuat pengaturan hasil ujian...');
+  try{
+    const rows=await call('getPengaturanHasil');
+    $('adminContent').innerHTML=`<h1>Pengaturan Tampilan Hasil Ujian</h1>
+      <div class="panel">
+        <p>Pilih apakah nilai hasil ujian boleh langsung dilihat siswa setelah menekan <b>Selesai Ujian</b>.</p>
+        <div class="tablewrap"><table class="table"><thead><tr><th>Ujian</th><th>Mata Pelajaran</th><th>Kelas</th><th>Status</th><th>Tampilkan Hasil ke Siswa</th><th>Aksi</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr><td>${esc(r.Nama_Ujian)}</td><td>${esc(r.Mapel)}</td><td>${esc(r.Kelas)}</td><td>${esc(r.Status)}</td>
+          <td><select id="show_${esc(r.ID_Ujian)}"><option value="YA" ${r.Tampilkan_Hasil==='YA'?'selected':''}>YA - Tampilkan</option><option value="TIDAK" ${r.Tampilkan_Hasil==='TIDAK'?'selected':''}>TIDAK - Sembunyikan</option></select></td>
+          <td><button class="small success" onclick="simpanPengaturanHasil('${escapeAttr(r.ID_Ujian)}')">Simpan</button></td></tr>`).join('')}</tbody></table></div>
+        <div class="notice">Jika disembunyikan, siswa tetap melihat pesan bahwa ujian telah selesai, tetapi nilai tidak ditampilkan. Admin tetap dapat melihat hasil pada menu <b>Hasil Ujian</b>.</div>
+      </div>`;
+  }catch(e){alert(e.message)}finally{unload()}
+}
+async function simpanPengaturanHasil(id){
+  const el=$('show_'+id); if(!el)return;
+  load('Menyimpan pengaturan...');
+  try{await call('savePengaturanHasil',id,el.value);alert('Pengaturan berhasil disimpan.')}catch(e){alert(e.message)}finally{unload()}
+}
+
+async function readOnly(m){let map={jawaban:['Jawaban','adminGetJawaban'],hasil:['Hasil Ujian','adminGetHasil'],essay:['Koreksi Essay','adminGetEssay']}[m];load('Memuat data...');try{let rows=await call(map[1]);let heads=rows[0]?Object.keys(rows[0]):[];$('adminContent').innerHTML=`<h1>${map[0]}</h1><div class="tablewrap"><table class="table"><thead><tr>${heads.map(h=>'<th>'+h+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+heads.map(h=>'<td>'+esc(r[h])+'</td>').join('')+'</tr>').join('')}</tbody></table></div>`}catch(e){alert(e.message)}finally{unload()}}
+async function uploadPage(){load('Menyiapkan upload...');try{let uj=await call('adminGetUjian');$('adminContent').innerHTML=`<h1>Upload Soal XLSX</h1><div class="panel"><p>Gunakan file <b>.xlsx</b>. Gambar yang ditempel langsung di Excel akan diekstrak otomatis. Rumus LaTeX dapat ditulis dengan <code>$x^2$</code> atau <code>$$\frac{a}{b}$$</code>.</p><label>Ujian<select id="uploadUjian">${uj.map(x=>`<option value="${x.ID_Ujian}">${esc(x.Nama_Ujian)} — ${esc(x.Mapel)}</option>`).join('')}</select></label><br><br><input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><div class="toolbar"><button onclick="uploadSoalFile()">Upload Soal XLSX</button><button class="success" onclick="downloadTemplateSoal()">⬇ Download Template XLSX</button></div><div class="notice">Gambar dapat ditempel pada sel Gambar_Soal atau Gambar_A sampai Gambar_E. Sistem akan menyimpannya ke Google Drive.</div></div>`}catch(e){alert(e.message)}finally{unload()}}
+function downloadTemplateSoal(){const h=['Jenis','Soal','Gambar_Soal','A','Gambar_A','B','Gambar_B','C','Gambar_C','D','Gambar_D','E','Gambar_E','Kunci_Jawaban','Kata_Kunci','Bobot'];const r=[h,['PG','Hitung $x^2+y^2=z^2$','','Pilihan A','','Pilihan B','','Pilihan C','','Pilihan D','','Pilihan E','','A','',10],['ESSAY','Jelaskan materi dengan rumus $$\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}$$','','','','','','','','','','','','','kata kunci 1|kata kunci 2',10]];const ws=XLSX.utils.aoa_to_sheet(r);ws['!cols']=h.map((x,i)=>({wch:[1,3,5,7,9,11,14].includes(i)?35:18}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Template Soal');XLSX.writeFile(wb,'Template_Soal_CBT.xlsx')}
+
+function zipPath_(p){return String(p||'').replace(/^\.\//,'').replace(/\\/g,'/').split('/').reduce((a,x)=>{if(!x||x==='.')return a;if(x==='..'){a.pop();return a}a.push(x);return a},[]).join('/')}
+function resolveZipPath_(base,target){target=String(target||'');if(target.startsWith('/'))return zipPath_(target);const parts=String(base).split('/');parts.pop();return zipPath_(parts.join('/')+'/'+target)}
+function xmlText_(el,name){const x=el.getElementsByTagName(name)[0];return x?String(x.textContent||''):''}
+async function extractEmbeddedImages_(arrayBuffer, sheetIndex){
+  const zip=await JSZip.loadAsync(arrayBuffer); const files=zip.files;
+  const sheetPath='xl/worksheets/sheet'+(sheetIndex+1)+'.xml';
+  const sheetRelsPath='xl/worksheets/_rels/sheet'+(sheetIndex+1)+'.xml.rels';
+  if(!files[sheetPath]||!files[sheetRelsPath]) return {};
+  const parser=new DOMParser();
+  const sheetDoc=parser.parseFromString(await files[sheetPath].async('text'),'application/xml');
+  const relDoc=parser.parseFromString(await files[sheetRelsPath].async('text'),'application/xml');
+  const rels={}; Array.from(relDoc.getElementsByTagName('Relationship')).forEach(r=>rels[r.getAttribute('Id')]=r.getAttribute('Target'));
+  const drawingEl=sheetDoc.getElementsByTagName('drawing')[0]; if(!drawingEl)return {};
+  const drawingTarget=rels[drawingEl.getAttribute('r:id')||drawingEl.getAttribute('id')]; if(!drawingTarget)return {};
+  const drawingPath=resolveZipPath_(sheetPath,drawingTarget); const drawingRelsPath=zipPath_('xl/drawings/_rels/'+drawingPath.split('/').pop()+'.rels');
+  if(!files[drawingPath]||!files[drawingRelsPath])return {};
+  const drawingDoc=parser.parseFromString(await files[drawingPath].async('text'),'application/xml');
+  const drDoc=parser.parseFromString(await files[drawingRelsPath].async('text'),'application/xml');
+  const drels={}; Array.from(drDoc.getElementsByTagName('Relationship')).forEach(r=>drels[r.getAttribute('Id')]=r.getAttribute('Target'));
+  const out={};
+  const anchors=Array.from(drawingDoc.documentElement.children).filter(x=>/^(twoCellAnchor|oneCellAnchor|absoluteAnchor)$/.test(x.localName||x.nodeName.split(':').pop()));
+  for(const anchor of anchors){
+    const from=anchor.getElementsByTagName('xdr:from')[0]||anchor.getElementsByTagName('from')[0];
+    if(!from)continue;
+    const row=parseInt(xmlText_(from,'xdr:row')||xmlText_(from,'row'),10); const col=parseInt(xmlText_(from,'xdr:col')||xmlText_(from,'col'),10);
+    if(isNaN(row)||isNaN(col))continue;
+    const blip=anchor.getElementsByTagName('a:blip')[0]||anchor.getElementsByTagName('blip')[0]; if(!blip)continue;
+    const rid=blip.getAttribute('r:embed')||blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','embed');
+    const target=drels[rid]; if(!target)continue;
+    const mediaPath=resolveZipPath_(drawingPath,target); if(!files[mediaPath])continue;
+    const blob=await files[mediaPath].async('base64');
+    let mime='image/png'; if(/\.jpe?g$/i.test(mediaPath))mime='image/jpeg'; else if(/\.gif$/i.test(mediaPath))mime='image/gif'; else if(/\.webp$/i.test(mediaPath))mime='image/webp';
+    const name=mediaPath.split('/').pop();
+    out[row+':'+col]={data:'data:'+mime+';base64,'+blob,name:name,row:row,col:col};
+  }
+  return out;
+}
+async function readXlsxWithImages_(arrayBuffer){
+  const wb=XLSX.read(arrayBuffer,{type:'array',cellFormula:true,cellNF:true,cellDates:true});
+  const ws=wb.Sheets[wb.SheetNames[0]]; if(!ws)throw new Error('Sheet pertama tidak ditemukan.');
+  const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+  if(!matrix.length)throw new Error('Data XLSX kosong.');
+  const headers=matrix[0].map(x=>String(x||'').trim());
+  const images=await extractEmbeddedImages_(arrayBuffer,0);
+  const imageFields=new Set(['Gambar_Soal','Gambar_A','Gambar_B','Gambar_C','Gambar_D','Gambar_E']);
+  const rows=[];
+  for(let r=1;r<matrix.length;r++){
+    const row=matrix[r], o={}; let any=false;
+    headers.forEach((h,c)=>{if(!h)return;const v=row[c]??'';o[h]=v;if(String(v).trim())any=true;const im=images[r+':'+c];if(im&&imageFields.has(h)){o._images=o._images||{};o._images[h]=im;any=true}});
+    if(any)rows.push(o);
+  }
+  return rows;
+}
+async function uploadSoalFile(){const f=$('xlsxFile')?.files?.[0];if(!f)return alert('Pilih file XLSX terlebih dahulu.');if(!/\.xlsx$/i.test(f.name))return alert('Hanya file XLSX yang didukung.');load('Membaca teks dan gambar dari XLSX...');try{const buf=await f.arrayBuffer();const rows=await readXlsxWithImages_(buf);if(!rows.length)throw new Error('Tidak ada data soal pada XLSX.');load('Mengirim soal dan gambar ke server...');const r=await call('importSoalJSON',$('uploadUjian').value,rows);alert(r.message);adminMenu('soal')}catch(e){alert(e&&e.message?e.message:e)}finally{unload()}}
+
+async function loadExams(silent){
+  if(!silent)load('Memuat ujian...');
+  try{
+    const xs=await call('getUjianAktif',user.kelas);
+    if(!silent)unload();
+    $('examList').innerHTML=xs.length?xs.map(x=>`<div class="panel"><h3>${esc(x.Nama_Ujian)}</h3><p>${esc(x.Mapel)}<br>Durasi: ${esc(x.Durasi)} menit</p><button onclick='startExam(${JSON.stringify(x)})'>Mulai Ujian</button></div>`).join(''):'<div class="panel">Tidak ada ujian aktif. Halaman akan memeriksa kembali otomatis.</div>';
+    clearInterval(examListInt);
+    examListInt=setInterval(()=>loadExams(true),60000);
+  }catch(e){if(!silent){unload();alert(e.message)}}
+}
+async function startExam(ex){
+  if(!confirm('Mulai ujian? Waktu akan berjalan.'))return;
+  load('Menyiapkan soal...');
+  try{
+    const q=await call('getSoalUjian',ex.ID_Ujian);
+    if(!q.length){unload();return alert('Soal belum tersedia')}
+    currentExam=ex;questions=q;answers={};qi=0;examStarted=true;
+    seconds=(Number(ex.Durasi)||60)*60;
+    examSessionId=newSessionId();
+    try{await call('startExamServer',ex.ID_Ujian,user.id)}catch(e){console.warn(e)}
+    const local=loadLocalDraft();
+    const applyDraft=(d)=>{
+      if(d&&d.answers){
+        answers=d.answers||{};
+        qi=Math.min(Number(d.qi)||0,Math.max(0,questions.length-1));
+        if(Number(d.seconds)>0) seconds=Math.min(seconds,Number(d.seconds));
+        examSessionId=d.sessionId||examSessionId;
+      }
+      unload();
+      $('examName').textContent=ex.Nama_Ujian;
+      $('examStudent').textContent=user.nama+' • '+user.kelas;
+      page('examPage');startTimer();startAutosave();renderQ();
+    };
+    if(local){applyDraft(local);return}
+    try{
+      const r=await call('getDraftJawaban',ex.ID_Ujian,user.id);
+      if(r&&r.answers&&Object.keys(r.answers).length)
+        applyDraft({answers:r.answers,qi:0,seconds:seconds,sessionId:r.sessionId||examSessionId});
+      else applyDraft(null);
+    }catch(e){applyDraft(null)}
+  }catch(e){unload();alert(e.message)}
+}
+function startTimer(){clearInterval(timerInt);tick();timerInt=setInterval(()=>{seconds--;saveLocalDraft();tick();if(seconds<=0){clearInterval(timerInt);autosaveNow(true);submitExam()}},1000)}function tick(){let h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;$('timer').textContent=[h,m,s].map(x=>String(x).padStart(2,'0')).join(':')}
+function imageUrl_(value){
+  let s=String(value||'').trim();
+  if(!s)return '';
+
+  // URL gambar biasa (bukan Google Drive) dipakai apa adanya.
+  if(/^https?:\/\//i.test(s) && !/drive\.google\.com/i.test(s)) return s;
+
+  // Google Drive: /file/d/ID/view, /d/ID, open?id=ID, uc?id=ID,
+  // thumbnail?id=ID, serta variasi query id=ID.
+  const m=s.match(/(?:[?&]id=|\/file\/d\/|\/d\/)([a-zA-Z0-9_-]{20,})/i);
+  if(m) return 'https://drive.google.com/thumbnail?id='+encodeURIComponent(m[1])+'&sz=w1200';
+
+  // Jika yang dimasukkan hanya ID file Drive.
+  if(/^[a-zA-Z0-9_-]{20,}$/.test(s))
+    return 'https://drive.google.com/thumbnail?id='+encodeURIComponent(s)+'&sz=w1200';
+
+  // URL lain yang sudah valid tetap diteruskan.
+  if(/^https?:\/\//i.test(s)) return s;
+  return '';
+}
+function richText(t,img){
+  let x=esc(t||'')
+    .replace(/\$\$([\s\S]+?)\$\$/g,(m,z)=>{try{return katex.renderToString(z,{displayMode:true,throwOnError:false})}catch(e){return m}})
+    .replace(/\$([^$]+)\$/g,(m,z)=>{try{return katex.renderToString(z,{throwOnError:false})}catch(e){return m}});
+  const src=imageUrl_(img);
+  return src?x+`<br><img src="${esc(src)}" style="max-width:100%;max-height:260px" loading="lazy" referrerpolicy="no-referrer">`:x;
+}
+
+function renderQ(){let q=questions[qi];$('qnum').textContent=`Soal ${qi+1} dari ${questions.length}`;$('qtext').innerHTML=richText(q.soal,q.gambarSoal);let saved=answers[q.id]||'';$('answerArea').innerHTML=q.jenis==='ESSAY'?`<textarea id="essay" rows="8" placeholder="Tuliskan jawaban">${esc(saved)}</textarea>`:q.options.map(o=>`<div class="option ${saved===o.key?'selected':''}" onclick="answer('${q.id}','${o.key}')"><b>${o.key}.</b> ${richText(o.text,o.gambar)}</div>`).join('');if(q.jenis==='ESSAY')$('essay').oninput=e=>answer(q.id,e.target.value);updateQuestionNumbers()}
+function answer(id,v){
+  answers[id]=v;
+  autosaveDirty=true;
+  saveLocalDraft();
+  if(questions[qi]&&questions[qi].jenis==='ESSAY'){
+    const el=$('essay');
+    if(el&&el.value!==v)el.value=v;
+    updateQuestionNumbers();
+    return;
+  }
+  renderQ();
+}
+function updateQuestionNumbers(){
+  const nums = $('nums');
+  if(!nums) return;
+  nums.innerHTML=questions.map((x,i)=>
+    `<button class="${answers[x.id]?'answered':''} ${i===qi?'active':''}" onclick="gotoQ(${i})">${i+1}</button>`
+  ).join('');
+}
+function gotoQ(i){qi=i;renderQ()}function prevQ(){if(qi){qi--;renderQ()}}function nextQ(){if(qi<questions.length-1){qi++;renderQ()}}
+function finishExam(){if(confirm('Kirim jawaban dan akhiri ujian?'))submitExam()}
+async function submitExam(){
+  if(!examStarted)return;
+  examStarted=false;clearInterval(timerInt);stopAutosave();
+  saveLocalDraft();
+  load('Menghitung dan mengirim seluruh jawaban...');
+  try{
+    const r=await call('selesaiUjian',{idUjian:currentExam.ID_Ujian,idSiswa:user.id,sessionId:examSessionId,answers:answers});
+    autosaveDirty=false;clearLocalDraft();unload();
+    if(r.tampilkanHasil){
+      $('score').textContent=r.nilaiAkhir;
+      $('resultMsg').textContent=`Nilai PG: ${r.nilaiPG} | Nilai Essay: ${r.nilaiEssay} | Status: ${r.status}${r.metodeEssay?' | Koreksi Essay: '+r.metodeEssay:''}`;
+    }else{
+      $('score').textContent='';
+      $('resultMsg').textContent='Ujian telah selesai dan jawaban Anda sudah tersimpan. Nilai hasil ujian tidak ditampilkan saat ini sesuai pengaturan administrator.';
+    }
+    page('resultPage');
+  }catch(e){
+    unload();examStarted=true;startTimer();startAutosave();autosaveDirty=true;
+    alert('Jawaban belum berhasil dikirim. Data tetap tersimpan di perangkat dan akan dicoba lagi. '+e.message);
+  }
+}
+window.onload=()=>{try{let a=localStorage.getItem('cbtAdmin'),u=localStorage.getItem('cbtUser');if(a){admin=JSON.parse(a);showAdmin()}else if(u){user=JSON.parse(u);showStudent()}}catch(e){}}
+</script></body></html>

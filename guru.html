@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="id">
+<head>
+<script src="./cbt-config.js"></script>
+<script>
+(function(){
+  const C=window.CBT_CONFIG||{};
+  window.CBT_API_URL=C.API_URL||'';
+  window.cbtApiCall=async function(name,args){
+    if(!window.CBT_API_URL || /PASTE_GAS_WEB_APP_URL_HERE/i.test(window.CBT_API_URL))
+      throw new Error('API_URL belum diisi pada cbt-config.js.');
+    const token=localStorage.getItem('cbtAdminToken')||localStorage.getItem('cbtRoleToken')||localStorage.getItem('cbtUserToken')||'';
+    const res=await fetch(window.CBT_API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:name,args:Array.isArray(args)?args:[],token:token}),
+      redirect:'follow',
+      cache:'no-store'
+    });
+    const text=await res.text();
+    let out;
+    try{out=JSON.parse(text)}catch(e){throw new Error('Respons API tidak valid: '+text.slice(0,300))}
+    if(!out.success) throw new Error(out.error||'Terjadi kesalahan server.');
+    return out.data;
+  };
+})();
+</script>
+<meta charset="utf-8"><base target="_top">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Portal Guru - CBT Sekolah</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#172033}.hidden{display:none!important}
+.app{display:flex;min-height:100vh}.side{width:250px;background:#0f172a;color:#fff;padding:18px;position:sticky;top:0;height:100vh;overflow:auto}.side h2{margin:0 0 5px}.side small{color:#cbd5e1}.side hr{border:0;border-top:1px solid #334155;margin:15px 0}.side button{width:100%;margin:4px 0;padding:11px;border:0;border-radius:8px;background:#1e293b;color:#fff;text-align:left;font-weight:bold;cursor:pointer}.side button:hover{background:#334155}.side button.active{background:#2563eb}.side button.danger{background:#dc2626}.main{flex:1;padding:22px;overflow:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:18px}.top h1{margin:0}.clock{font-weight:bold;color:#475569}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}.stat,.panel{background:#fff;padding:18px;border-radius:12px;box-shadow:0 2px 12px #0001}.stat b{display:block;font-size:30px;color:#2563eb;margin-top:5px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar button,button{font:inherit;padding:9px 12px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-weight:bold}.toolbar button:hover,button:hover{filter:brightness(.95)}button.secondary{background:#64748b}button.success{background:#16a34a}button.danger{background:#dc2626}.tablewrap{overflow:auto;background:#fff;border-radius:12px}.table{width:100%;border-collapse:collapse;min-width:850px}.table th,.table td{padding:9px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}.table th{background:#eff6ff}.small{padding:6px 9px;font-size:12px;margin:2px}.notice{padding:11px;border-radius:8px;background:#e0f2fe;margin:10px 0}.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.full{grid-column:1/-1}label{display:block;font-weight:bold}input,select,textarea{font:inherit;padding:9px;border:1px solid #cbd5e1;border-radius:8px;width:100%;margin-top:5px}textarea{resize:vertical}.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}.modalbox{background:#fff;border-radius:14px;padding:20px;width:min(1000px,100%);max-height:92vh;overflow:auto}.thumb{max-width:110px;max-height:80px;display:block;margin-top:5px;border-radius:6px}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e2e8f0;font-size:12px;font-weight:bold}.loading{position:fixed;inset:0;background:#0008;z-index:999;display:none;align-items:center;justify-content:center}.loading .box{background:#fff;padding:22px 30px;border-radius:12px;font-weight:bold}.empty{padding:30px;text-align:center;color:#64748b}.filterbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;background:#fff;padding:14px;border-radius:12px;margin:12px 0}.actions{white-space:nowrap}@media(max-width:760px){.app{display:block}.side{width:100%;height:auto;position:static}.side button{width:auto;display:inline-block}.main{padding:12px}.top{display:block}.clock{margin-top:8px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body>
+<div id="loading" class="loading"><div class="box" id="loadingText">Memproses...</div></div>
+<div class="app">
+<aside class="side">
+<h2>CBT GURU</h2><small id="who">Memuat sesi...</small><hr>
+<button data-action="home">📊 Dashboard</button>
+<button data-action="bank">❓ Bank Soal</button>
+<button data-action="upload">📤 Upload Soal</button>
+<button data-action="hasil">📈 Hasil Ujian</button>
+<button data-action="essay">✍️ Koreksi Essay</button>
+<button class="danger" data-action="logout">Keluar</button>
+</aside>
+<main class="main">
+<div class="top"><div><h1 id="pageTitle">Portal Guru</h1><div id="sub">Kelola data sesuai penugasan Anda</div></div><div class="clock" id="clock"></div></div>
+<div id="content"></div>
+</main></div>
+<div id="modal"></div>
+<script>
+'use strict';
+let token=new URLSearchParams(location.search).get('token')||localStorage.getItem('cbtRoleToken')||'';
+let me=null, dashboardData=null, bankRows=[];
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const load=t=>{$('loadingText').textContent=t||'Memproses...';$('loading').style.display='flex'};
+const unload=()=>{$('loading').style.display='none'};
+function call(name,...args){return cbtApiCall(name,args)}
+function errorText(e){return e&&e.message?e.message:String(e||'Terjadi kesalahan')}
+function fail(e){const m=errorText(e);console.error(e);alert(m);if(/Sesi telah berakhir|Sesi tidak valid|Akses ditolak|Token/i.test(m)){localStorage.removeItem('cbtRoleToken');localStorage.removeItem('cbtRoleUser');location.href=location.href.split('?')[0]+'?page=index'}}
+function setActive(a){document.querySelectorAll('.side button[data-action]').forEach(b=>b.classList.toggle('active',b.dataset.action===a))}
+function setTitle(t,s){$('pageTitle').textContent=t;$('sub').textContent=s||''}
+function clock(){ $('clock').textContent=new Date().toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'medium'}) }
+setInterval(clock,1000);clock();
+
+document.querySelector('.side').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b)return;const a=b.dataset.action;if(a==='home')home();else if(a==='bank')bankPage();else if(a==='upload')uploadPage();else if(a==='hasil')hasilPage();else if(a==='essay')essayPage();else if(a==='logout')logout()});
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-cmd]');
+  if(!b)return;
+
+  const cmd=b.dataset.cmd;
+
+  if(cmd==='bank-filter')loadBank();
+  if(cmd==='bank-add')editSoal();
+  if(cmd==='bank-edit')editSoal(Number(b.dataset.i));
+  if(cmd==='bank-delete')deleteSoal(b.dataset.id);
+  if(cmd==='modal-close')closeModal();
+  if(cmd==='modal-save')saveSoal(
+    Number.isNaN(Number(b.dataset.i)) ? null : Number(b.dataset.i)
+  );
+  if(cmd==='show-hasil')showHasil(b.dataset.id);
+  if(cmd==='show-essay')showEssay(b.dataset.id);
+  if(cmd==='back-hasil')hasilPage();
+  if(cmd==='back-essay')essayPage();
+  if(cmd==='essay-save')saveEssay(b.dataset.key,b.dataset.id);
+  if(cmd==='upload')uploadSoalFile();
+  if(cmd==='template')downloadTemplateSoal();
+
+  if(cmd==='go-login'){
+    const baseUrl = window.location.href.split('?')[0];
+    window.top.location.href = baseUrl + '?page=index';
+  }
+});
+
+async function init(){try{if(!token)throw new Error('Token login tidak ditemukan. Silakan login kembali.');const r=await call('getRoleMe',token);if(!r||!r.success||String(r.role).toUpperCase()!=='GURU')throw new Error('Sesi portal GURU tidak valid. Silakan login kembali.');me=r.user;localStorage.setItem('cbtRoleToken',token);localStorage.setItem('cbtRoleUser',JSON.stringify(me));$('who').textContent=(me.nama||'Guru')+' • GURU';await home()}catch(e){$('content').innerHTML='<div class="panel"><h2>Portal Guru</h2><p>'+esc(errorText(e))+'</p><button data-cmd="go-login">Kembali ke Login</button></div>'}}
+
+async function home(){setActive('home');setTitle('Dashboard Guru','Ringkasan ujian yang menjadi tanggung jawab Anda');load('Memuat dashboard...');try{dashboardData=await call('guruDashboard',token);const ring=dashboardData.ringkasan||[];const uj=dashboardData.ujian||[];$('content').innerHTML='<div class="grid">'+ring.map(x=>'<div class="stat"><div>'+esc(x.nama)+'</div><b>'+esc(x.peserta)+'</b><div>peserta • rata-rata '+esc(x.rata)+'</div></div>').join('')+'</div><div class="panel" style="margin-top:14px"><h3>Ujian yang menjadi tanggung jawab Anda</h3>'+examTable(uj)+'</div>'}catch(e){fail(e)}finally{unload()}}
+function examTable(rows){if(!rows.length)return '<div class="empty">Belum ada ujian yang ditugaskan.</div>';return '<div class="tablewrap"><table class="table"><thead><tr><th>Ujian</th><th>Mapel</th><th>Kelas</th><th>Sesi</th><th>Ruang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.nama||x.Nama_Ujian)+'</td><td>'+esc(x.mapel||x.Mapel)+'</td><td>'+esc(x.kelas||x.Kelas)+'</td><td>'+esc(x.sesi||x.Sesi)+'</td><td>'+esc(x.ruang||x.Ruang)+'</td><td>'+esc(x.status||x.Status)+'</td><td class="actions"><button class="small" data-cmd="show-hasil" data-id="'+esc(x.id||x.ID_Ujian)+'">Hasil</button> <button class="small" data-cmd="show-essay" data-id="'+esc(x.id||x.ID_Ujian)+'">Essay</button></td></tr>').join('')+'</tbody></table></div>'}
+function filters(prefix){return '<div class="filterbar"><label>Mapel<select id="'+prefix+'Mapel"><option value="">Semua Mapel</option></select></label><label>Kelas<select id="'+prefix+'Kelas"><option value="">Semua Kelas</option></select></label></div>'}
+async function fillFilters(prefix){if(!dashboardData)dashboardData=await call('guruDashboard',token);const ms=[...new Set((dashboardData.ujian||[]).map(x=>x.mapel||x.Mapel).filter(Boolean))].sort();const ks=[...new Set((dashboardData.ujian||[]).flatMap(x=>String(x.kelas||x.Kelas||'').split(/[,;]+/).map(z=>z.trim()).filter(Boolean)))].sort();$(prefix+'Mapel').innerHTML='<option value="">Semua Mapel</option>'+ms.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');$(prefix+'Kelas').innerHTML='<option value="">Semua Kelas</option>'+ks.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('')}
+async function bankPage(){setActive('bank');setTitle('Bank Soal','Gunakan fungsi yang sama dengan Admin, dibatasi hanya pada ujian Anda');load('Memuat Bank Soal...');try{$('content').innerHTML='<h2>❓ Bank Soal</h2>'+filters('bank')+'<div class="toolbar"><button data-cmd="bank-filter">Terapkan Filter</button><button class="success" data-cmd="bank-add">＋ Tambah Soal</button></div><div id="bankTable"></div>';await fillFilters('bank');await loadBank()}catch(e){fail(e)}finally{unload()}}
+async function loadBank(){load('Memuat soal...');try{const rows=await call('guruGetSoalBank',token,{mapel:$('bankMapel').value,kelas:$('bankKelas').value});bankRows=rows||[];$('bankTable').innerHTML=bankRows.length?'<div class="tablewrap"><table class="table"><thead><tr><th>Ujian</th><th>Jenis</th><th>Soal</th><th>Kunci</th><th>Bobot</th><th>Aksi</th></tr></thead><tbody>'+bankRows.map((r,i)=>'<tr><td>'+esc(r.ID_Ujian)+'</td><td>'+esc(r.Jenis)+'</td><td>'+esc(r.Soal)+(r.Gambar_Soal?'<img class="thumb" src="'+esc(imageUrl(r.Gambar_Soal))+'">':'')+'</td><td>'+esc(r.Kunci_Jawaban||r.Kata_Kunci||'')+'</td><td>'+esc(r.Bobot)+'</td><td class="actions"><button class="small" data-cmd="bank-edit" data-i="'+i+'">Edit</button><button class="small danger" data-cmd="bank-delete" data-id="'+esc(r.ID_Soal)+'">Hapus</button></td></tr>').join('')+'</tbody></table></div>':'<div class="panel empty">Belum ada soal untuk penugasan Anda.</div>'}catch(e){fail(e)}finally{unload()}}
+function imageUrl(v){v=String(v||'').trim();if(!v)return '';const m=v.match(/[?&]id=([A-Za-z0-9_-]+)/)||v.match(/\/file\/d\/([A-Za-z0-9_-]+)/)||v.match(/\/d\/([A-Za-z0-9_-]+)/);return m?'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w800':v}
+async function editSoal(i){const r=i===undefined?{}:bankRows[i];load('Menyiapkan formulir...');try{const uj=await call('guruGetSoal',token,{mapel:$('bankMapel')?.value||'',kelas:$('bankKelas')?.value||''});if(!uj.length)throw new Error('Belum ada ujian yang ditugaskan kepada Anda.');$('modal').innerHTML='<div class="modal"><div class="modalbox"><h2>'+esc(r.ID_Soal?'Edit Soal':'Tambah Soal')+'</h2><div class="formgrid"><input id="f_ID" type="hidden" value="'+esc(r.ID_Soal||'')+'"><label>Ujian<select id="f_Ujian">'+uj.map(x=>'<option value="'+esc(x.ID_Ujian)+'" '+(String(x.ID_Ujian)===String(r.ID_Ujian)?'selected':'')+'>'+esc(x.Nama_Ujian)+' — '+esc(x.Mapel)+' — '+esc(x.Kelas)+'</option>').join('')+'</select></label><label>Jenis<select id="f_Jenis"><option value="PG" '+(String(r.Jenis||'PG')==='PG'?'selected':'')+'>PG</option><option value="ESSAY" '+(String(r.Jenis||'')==='ESSAY'?'selected':'')+'>ESSAY</option></select></label><label>Bobot<input id="f_Bobot" type="number" value="'+esc(r.Bobot||10)+'"></label><label>Kunci Jawaban<input id="f_Kunci" value="'+esc(r.Kunci_Jawaban||'')+'"></label><label class="full">Kata Kunci<input id="f_Kata" value="'+esc(r.Kata_Kunci||'')+'"></label><label class="full">Soal<textarea id="f_Soal" rows="5">'+esc(r.Soal||'')+'</textarea></label>'+['A','B','C','D','E'].map(k=>'<label>Pilihan '+k+'<textarea id="f_'+k+'" rows="3">'+esc(r[k]||'')+'</textarea></label>').join('')+'</div><div class="notice">Gambar dapat menggunakan URL Google Drive/gambar. Data disimpan melalui fungsi backend yang sama dengan Admin, tetapi Guru hanya dapat menyimpan pada ujian yang ditugaskan.</div><div class="toolbar"><button class="success" data-cmd="modal-save" data-i="'+(i===undefined?'null':i)+'">Simpan</button><button class="secondary" data-cmd="modal-close">Batal</button></div></div></div>'}catch(e){fail(e)}finally{unload()}}
+async function saveSoal(i){load('Menyimpan soal...');try{const old=i===null?{}:bankRows[i];const d={ID_Soal:$('f_ID').value,ID_Ujian:$('f_Ujian').value,Jenis:$('f_Jenis').value,Soal:$('f_Soal').value,Gambar_Soal:old?.Gambar_Soal||'',Kunci_Jawaban:$('f_Kunci').value,Kata_Kunci:$('f_Kata').value,Bobot:$('f_Bobot').value};['A','B','C','D','E'].forEach(k=>d[k]=$('f_'+k).value);await call('guruSaveSoal',token,d);closeModal();alert('Soal berhasil disimpan.');await bankPage()}catch(e){fail(e)}finally{unload()}}
+async function deleteSoal(id){if(!confirm('Hapus soal ini?'))return;load('Menghapus soal...');try{await call('guruDeleteSoal',token,id);alert('Soal berhasil dihapus.');await loadBank()}catch(e){fail(e)}finally{unload()}}
+function closeModal(){$('modal').innerHTML=''}
+async function uploadPage(){setActive('upload');setTitle('Upload Soal','Import XLSX menggunakan fungsi backend yang sama dengan Admin');load('Menyiapkan upload...');try{const uj=await call('guruGetSoal',token,{});$('content').innerHTML='<h2>📤 Upload Soal XLSX</h2>'+filters('up')+'<div class="panel"><label>Ujian Tujuan<select id="uploadUjian"></select></label><div class="notice">Gunakan template XLSX. Gambar pada sel Gambar_Soal atau Gambar_A sampai Gambar_E dapat ikut diunggah.</div><input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><div class="toolbar"><button data-cmd="upload">Upload Soal XLSX</button><button class="success" data-cmd="template">⬇ Download Template</button></div></div>';await fillFilters('up');renderUploadExams(uj)}catch(e){fail(e)}finally{unload()}}
+function renderUploadExams(all){const m=$('upMapel').value,k=$('upKelas').value;const rows=all.filter(x=>(!m||String(x.Mapel||x.mapel)===m)&&(!k||String(x.Kelas||x.kelas).split(/[,;]+/).map(z=>z.trim()).includes(k)));$('uploadUjian').innerHTML=rows.map(x=>'<option value="'+esc(x.ID_Ujian||x.id)+'">'+esc(x.Nama_Ujian||x.nama)+' — '+esc(x.Mapel||x.mapel)+' — '+esc(x.Kelas||x.kelas)+'</option>').join('')||'<option value="">Tidak ada ujian</option>';$('upMapel').onchange=()=>renderUploadExams(all);$('upKelas').onchange=()=>renderUploadExams(all)}
+function downloadTemplateSoal(){const h=['Jenis','Soal','Gambar_Soal','A','Gambar_A','B','Gambar_B','C','Gambar_C','D','Gambar_D','E','Gambar_E','Kunci_Jawaban','Kata_Kunci','Bobot'];const r=[h,['PG','Contoh soal','','Pilihan A','','Pilihan B','','Pilihan C','','Pilihan D','','Pilihan E','','A','',10],['ESSAY','Contoh soal essay','','','','','','','','','','','','','kata kunci 1|kata kunci 2',10]];const ws=XLSX.utils.aoa_to_sheet(r),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Template Soal');XLSX.writeFile(wb,'Template_Soal_CBT_Guru.xlsx')}
+function zipPath(p){return String(p||'').replace(/^\.\//,'').replace(/\\/g,'/').split('/').reduce((a,x)=>{if(!x||x==='. ')return a;if(x==='..'){a.pop();return a}a.push(x);return a},[]).join('/')}
+function resolveZip(base,target){target=String(target||'');if(target.startsWith('/'))return zipPath(target);const p=String(base).split('/');p.pop();return zipPath(p.join('/')+'/'+target)}
+function xtext(el,n){const x=el.getElementsByTagName(n)[0];return x?String(x.textContent||''):''}
+async function extractImages(buf,idx){const z=await JSZip.loadAsync(buf),f=z.files,sp='xl/worksheets/sheet'+(idx+1)+'.xml',rp='xl/worksheets/_rels/sheet'+(idx+1)+'.xml.rels';if(!f[sp]||!f[rp])return {};const p=new DOMParser(),sd=p.parseFromString(await f[sp].async('text'),'application/xml'),rd=p.parseFromString(await f[rp].async('text'),'application/xml'),rels={};Array.from(rd.getElementsByTagName('Relationship')).forEach(x=>rels[x.getAttribute('Id')]=x.getAttribute('Target'));const dr=sd.getElementsByTagName('drawing')[0];if(!dr)return {};const dp=resolveZip(sp,rels[dr.getAttribute('r:id')||dr.getAttribute('id')]);const drp='xl/drawings/_rels/'+dp.split('/').pop()+'.rels';if(!f[dp]||!f[drp])return {};const dd=p.parseFromString(await f[dp].async('text'),'application/xml'),rr=p.parseFromString(await f[drp].async('text'),'application/xml'),drels={};Array.from(rr.getElementsByTagName('Relationship')).forEach(x=>drels[x.getAttribute('Id')]=x.getAttribute('Target'));const out={};for(const a of Array.from(dd.documentElement.children)){const from=a.getElementsByTagName('xdr:from')[0]||a.getElementsByTagName('from')[0];if(!from)continue;const row=parseInt(xtext(from,'xdr:row')||xtext(from,'row'),10),col=parseInt(xtext(from,'xdr:col')||xtext(from,'col'),10);const bl=a.getElementsByTagName('a:blip')[0]||a.getElementsByTagName('blip')[0];if(isNaN(row)||isNaN(col)||!bl)continue;const rid=bl.getAttribute('r:embed')||bl.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','embed'),target=drels[rid];if(!target)continue;const mp=resolveZip(dp,target);if(!f[mp])continue;const b=await f[mp].async('base64');let mime='image/png';if(/\.jpe?g$/i.test(mp))mime='image/jpeg';else if(/\.gif$/i.test(mp))mime='image/gif';out[row+':'+col]={data:'data:'+mime+';base64,'+b,name:mp.split('/').pop()}}return out}
+async function readXlsx(buf){const wb=XLSX.read(buf,{type:'array',cellFormula:true,cellNF:true,cellDates:true}),ws=wb.Sheets[wb.SheetNames[0]];if(!ws)throw new Error('Sheet pertama tidak ditemukan.');const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}),headers=(matrix[0]||[]).map(x=>String(x||'').trim()),imgs=await extractImages(buf,0),fields=new Set(['Gambar_Soal','Gambar_A','Gambar_B','Gambar_C','Gambar_D','Gambar_E']),rows=[];for(let r=1;r<matrix.length;r++){const row=matrix[r],o={};let any=false;headers.forEach((h,c)=>{if(!h)return;const v=row[c]??'';o[h]=v;if(String(v).trim())any=true;const im=imgs[r+':'+c];if(im&&fields.has(h)){o._images=o._images||{};o._images[h]=im;any=true}});if(any)rows.push(o)}return rows}
+async function uploadSoalFile(){const f=$('xlsxFile')?.files?.[0],id=$('uploadUjian')?.value;if(!id)return alert('Pilih ujian tujuan.');if(!f)return alert('Pilih file XLSX terlebih dahulu.');load('Membaca XLSX...');try{const rows=await readXlsx(await f.arrayBuffer());if(!rows.length)throw new Error('Tidak ada data soal.');load('Mengirim soal...');const r=await call('guruImportSoalJSON',token,id,rows);alert(r.message||'Upload berhasil.');await bankPage()}catch(e){fail(e)}finally{unload()}}
+async function hasilPage(){setActive('hasil');setTitle('Hasil Ujian','Hasil hanya untuk ujian yang ditugaskan kepada Anda');load('Memuat hasil...');try{if(!dashboardData)dashboardData=await call('guruDashboard',token);$('content').innerHTML='<h2>📈 Hasil Ujian</h2>'+examCards(dashboardData.ujian||[],'show-hasil')}catch(e){fail(e)}finally{unload()}}
+function examCards(rows,cmd){if(!rows.length)return '<div class="panel empty">Belum ada ujian yang ditugaskan.</div>';return '<div class="grid">'+rows.map(x=>'<div class="panel"><h3>'+esc(x.nama||x.Nama_Ujian)+'</h3><p>'+esc(x.mapel||x.Mapel)+' • '+esc(x.kelas||x.Kelas)+'</p><button data-cmd="'+cmd+'" data-id="'+esc(x.id||x.ID_Ujian)+'">Lihat</button></div>').join('')+'</div>'}
+async function showHasil(id){load('Memuat hasil...');try{const rows=await call('guruGetHasil',token,id);$('content').innerHTML='<div class="toolbar"><button class="secondary" data-cmd="back-hasil">← Kembali</button></div><div class="tablewrap"><table class="table"><thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>PG</th><th>Essay</th><th>Nilai Akhir</th><th>Status</th></tr></thead><tbody>'+((rows||[]).map(r=>'<tr><td>'+esc(r.NIS)+'</td><td>'+esc(r.Nama)+'</td><td>'+esc(r.Kelas)+'</td><td>'+esc(r.Nilai_PG)+'</td><td>'+esc(r.Nilai_Essay)+'</td><td><b>'+esc(r.Nilai_Akhir)+'</b></td><td>'+esc(r.Status)+'</td></tr>').join('')||'<tr><td colspan="7" class="empty">Belum ada hasil.</td></tr>')+'</tbody></table></div>'}catch(e){fail(e)}finally{unload()}}
+async function essayPage(){setActive('essay');setTitle('Koreksi Essay','Koreksi jawaban essay untuk ujian yang ditugaskan');load('Memuat essay...');try{if(!dashboardData)dashboardData=await call('guruDashboard',token);$('content').innerHTML='<h2>✍️ Koreksi Essay</h2>'+examCards(dashboardData.ujian||[],'show-essay')}catch(e){fail(e)}finally{unload()}}
+async function showEssay(id){load('Memuat jawaban essay...');try{const rows=await call('guruGetEssay',token,id);$('content').innerHTML='<div class="toolbar"><button class="secondary" data-cmd="back-essay">← Kembali</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Siswa</th><th>Soal</th><th>Jawaban</th><th>Bobot</th><th>Nilai</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody>'+((rows||[]).map(r=>'<tr><td>'+esc(r.Nama)+'<br>'+esc(r.NIS)+'</td><td>'+esc(r.Soal)+'</td><td style="white-space:pre-wrap;max-width:380px">'+esc(r.Jawaban)+'</td><td>'+esc(r.Bobot)+'</td><td><input id="n_'+esc(r.ID_Koreksi)+'" type="number" min="0" max="'+(Number(r.Bobot)||0)+'" value="'+esc(r.Nilai)+'"></td><td><textarea id="c_'+esc(r.ID_Koreksi)+'" rows="3">'+esc(r.Catatan)+'</textarea></td><td><button class="small success" data-cmd="essay-save" data-key="'+esc(r.ID_Koreksi)+'" data-id="'+esc(id)+'">Simpan</button></td></tr>').join('')||'<tr><td colspan="7" class="empty">Belum ada jawaban essay.</td></tr>')+'</tbody></table></div>'}catch(e){fail(e)}finally{unload()}}
+async function saveEssay(k,id){load('Menyimpan koreksi...');try{await call('guruSaveEssay',token,{ID_Koreksi:k,Nilai:$('n_'+k).value,Catatan:$('c_'+k).value});alert('Koreksi tersimpan.');await showEssay(id)}catch(e){fail(e)}finally{unload()}}
+async function logout(){
+  const oldToken=token;
+  localStorage.removeItem('cbtRoleToken');localStorage.removeItem('cbtRoleUser');token='';
+  try{if(oldToken)await call('logoutRole',oldToken)}catch(e){}
+  window.location.href=(window.CBT_CONFIG.INDEX_URL||'./index.html');
+}
+init();
+</script></body></html>
